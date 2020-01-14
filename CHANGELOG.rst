@@ -1,19 +1,30 @@
 Changelog
 ==========
-[0.2.0] - UNRELEASED
+[0.3.0] - UNRELEASED
+--------------------
+
+
+[0.2.0] - 2020-01-01
 --------------------
 
 Added
 ~~~~~
 
-- Add converters for date, decimal and timestamp ORC types in Python
-  and option to change them via Reader's and Writer's converters parameter.
+- Converters for date, decimal and timestamp ORC types in Python and
+  option to change them via Reader's and Writer's converters parameter.
+- Column object for accessing statistics about ORC columns.
+- An attribute to Reader for selected schema.
 
 Changed
 ~~~~~~~
 
-- Use timezone-aware datetimes (in UTC) for ORC timestamps by default.
+- Use timezone-aware datetime objects (in UTC) for ORC timestamps by default.
+- Wrapped C++ stripe object to Python Stripe.
 
+Fixed
+~~~~~
+
+- Decrementing reference for bytes object after reading from file stream.
 
 [0.1.0] - 2019-11-16
 --------------------

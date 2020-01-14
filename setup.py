@@ -169,7 +169,7 @@ def has_flag(compiler, flagname):
 
 def cpp_flag(compiler):
     """Return the -std=c++[11/14/17] compiler flag.
-    The newer version is prefered over c++11 (when it is available).
+    The newer version is preferred over c++11 (when it is available).
     """
     flags = ["-std=c++17", "-std=c++14", "-std=c++11"]
     if sys.platform == "darwin":
@@ -214,7 +214,7 @@ with open("README.rst") as file:
 
 setup(
     name="pyorc",
-    version="0.2.0",
+    version="0.3.0",
     description="Python module for reading and writing Apache ORC file format.",
     author="noirello",
     author_email="noirello@gmail.com",

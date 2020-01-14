@@ -32,19 +32,27 @@ API documentation
     :param dict converters: a dictionary, where the keys are
         :class:`TypeKind` and the values are subclasses of ORCConverter.
 
-.. method:: Reader.__next__()
+.. method:: Reader.__getitem__(col_idx)
 
-    Get the next row from the file.
+    Get a :class:`Column` object. The indexing is the same as it's in the
+    ORC file which means `0` is the top-level, the first field in the
+    top-level struct is `1`, if the `nth` field in the struct is a map then
+    the `(n+1)th` index is the column of the keys and the `(n+2)th` index is
+    the values, etc.
 
 .. method:: Reader.__len__()
 
     Get the number of rows in the file.
 
+.. method:: Reader.__next__()
+
+    Get the next row from the file.
+
 .. method:: Reader.iter_stripes()
 
-    Get an iterator with the :class:`stripe` objects from the file.
+    Get an iterator with the :class:`Stripe` objects from the file.
 
-    :return: an iterator of :class:`stripe` objects.
+    :return: an iterator of :class:`Stripe` objects.
     :rtype: iterator
 
 .. method:: Reader.read(rows=-1)
@@ -57,12 +65,12 @@ API documentation
 
 .. method:: Reader.read_stripe(idx)
 
-    Read a specific :class:`stripe` object at `idx` from the ORC file.
+    Read a specific :class:`Stripe` object at `idx` from the ORC file.
 
     :param int idx: the index of the stripe.
 
-    :return: a :class:`stripe` object.
-    :rtype: stripe
+    :return: a :class:`Stripe` object.
+    :rtype: Stripe
 
 .. method:: Reader.seek(row, whence=0)
 
@@ -84,30 +92,43 @@ API documentation
 
 .. attribute:: Reader.schema
 
-    A :class:`typedescription` object of the ORC file's schema.
+    A :class:`typedescription` object of the ORC file's schema. Always
+    represents the full schema of the file, regardless which columns
+    are selected to read.
+
+.. attribute:: Reader.selected_schema
+
+    A :class:`typedescription` object of the ORC file's schema that only
+    represents the selected columns. If no columns are specified then it's
+    the same as :attr:`Reader.schema`.
 
 
-:class:`stripe`
+:class:`Stripe`
 ===============
 
-.. class:: stripe(reader, idx)
+.. class:: Stripe(reader, idx)
 
     An object that represents a stripe in an ORC file. It's iterable just
     like :class:`Reader`, and inherits many of its methods, but the read
     rows are limited to the stripe.
 
     :param Reader reader: a reader object.
-    :param int idx: the index of the stripes.
+    :param int idx: the index of the stripe.
 
-.. method:: stripe.__next__()
+.. method:: Stripe.__getitem__(col_idx)
 
-    Get the next row from the stripe.
+    Get a :class:`Column` object, just like :meth:`Reader.__getitem__`, but
+    only for the current stripe.
 
-.. method:: stripe.__len__()
+.. method:: Stripe.__len__()
 
     Get the number of rows in the stripe.
 
-.. method:: stripe.seek(row, whence=0)
+.. method:: Stripe.__next__()
+
+    Get the next row from the stripe.
+
+.. method:: Stripe.seek(row, whence=0)
 
     Jump to a certain row position in the stripe. For possible `whence`
     values see :meth:`Reader.seek`.
@@ -115,7 +136,7 @@ API documentation
     :return: number of the absolute row position in the stripe.
     :rtype: int
 
-.. method:: stripe.read(rows=-1)
+.. method:: Stripe.read(rows=-1)
 
     Read the rows into memory. If `rows` is specified, at most number of
     rows will be read.
@@ -123,29 +144,53 @@ API documentation
     :return: A list of rows.
     :rtype: list
 
-.. attribute:: stripe.bloom_filter_columns
+.. attribute:: Stripe.bloom_filter_columns
 
     The list of column indices that have Bloom filter.
 
-.. attribute:: stripe.bytes_length
+.. attribute:: Stripe.bytes_length
 
     The length of the stripe in bytes.
 
-.. attribute:: stripe.bytes_offset
+.. attribute:: Stripe.bytes_offset
 
     The bytes offset where the stripes starts in the file.
 
-.. attribute:: stripe.current_row
+.. attribute:: Stripe.current_row
 
     The current row position in the stripe.
 
-.. attribute:: stripe.row_offset
+.. attribute:: Stripe.row_offset
 
     The row offset where the stripes starts in the file.
 
-.. attribute:: stripe.writer_timezone
+.. attribute:: Stripe.writer_timezone
 
     The timezone information of the writer.
+
+
+:class:`Column`
+===============
+
+.. class:: Column(stream, index)
+
+    An object that represents a column in an ORC file. It contains
+    statistics about the column. If the `stream` is a :class:`Reader`
+    object then the column refers to the entire ORC file, if its a 
+    :class:`Stripe` then just the specified ORC stripe.
+
+    :param Reader|Stripe stream: an ORC stream object (:class:`Reader`
+        or :class:`Stripe`).
+    :param int index: the index of the column.
+
+.. attribute:: Column.statistics
+
+    A dictionary object about the Column's statistics. It always contains
+    the kind of the column, the number of values that does not include null
+    values and a boolean value about either containing null values or not.
+    It may contain other information depending on the kind of the column
+    like minimum and maximum values, sums etc.
+
 
 :class:`typedescription`
 ========================
@@ -183,7 +228,7 @@ API documentation
 
 .. attribute:: typedescription.fields
 
-    A read-only dictionary of teh struct's fields, where the keys are the
+    A read-only dictionary of the struct's fields, where the keys are the
     fields names and teh values are typedescription objects.
 
 .. attribute:: typedescription.kind
