@@ -253,7 +253,7 @@ Reader::Reader(py::object fileo,
     } else {
         convDict = conv;
     }
-    reader = createReader(
+    reader = orc::createReader(
       std::unique_ptr<orc::InputStream>(new PyORCInputStream(fileo)), readerOpts);
     try {
         batchSize = batch_size;
@@ -265,6 +265,42 @@ Reader::Reader(py::object fileo,
         throw py::value_error(err.what());
     }
 }
+
+py::dict
+Reader::bytesLengths() const
+{
+    py::dict res;
+    res["content_length"] = reader->getContentLength();
+    res["file_footer_length"] = reader->getFileFooterLength();
+    res["file_postscript_length"] = reader->getFilePostscriptLength();
+    res["file_length"] = reader->getFileLength();
+    res["stripe_statistics_length"] = reader->getStripeStatisticsLength();
+    return res;
+}
+
+uint64_t
+Reader::compression() const
+{
+    return static_cast<uint64_t>(reader->getCompression());
+}
+
+uint64_t
+Reader::compressionBlockSize() const
+{
+    return reader->getCompressionSize();
+}
+
+
+py::tuple
+Reader::formatVersion() const
+{
+    py::tuple res(2);
+    orc::FileVersion ver = reader->getFormatVersion();
+    res[0] = py::cast(ver.getMajor());
+    res[1] = py::cast(ver.getMinor());
+    return res;
+}
+
 
 uint64_t
 Reader::len() const
@@ -278,13 +314,25 @@ Reader::numberOfStripes() const
     return reader->getNumberOfStripes();
 }
 
-Stripe
+uint32_t
+Reader::writerId() const
+{
+    return reader->getWriterIdValue();
+}
+
+uint32_t
+Reader::writerVersion() const
+{
+    return reader->getWriterVersion();
+}
+
+std::unique_ptr<Stripe>
 Reader::readStripe(uint64_t idx)
 {
     if (idx >= reader->getNumberOfStripes()) {
         throw py::index_error("stripe index out of range");
     }
-    return Stripe(*this, idx, reader->getStripe(idx));
+    return std::make_unique<Stripe>(*this, idx, reader->getStripe(idx));
 }
 
 TypeDescription
@@ -313,6 +361,16 @@ Reader::statistics(uint64_t columnIndex)
     } catch (std::logic_error& err) {
         throw py::index_error(err.what());
     }
+}
+
+py::dict
+Reader::metadata()
+{
+    py::dict result;
+    for (std::string key : reader->getMetadataKeys()) {
+        result[key.c_str()] = py::bytes(reader->getMetadataValue(key));
+    }
+    return result;
 }
 
 Stripe::Stripe(const Reader& reader_,

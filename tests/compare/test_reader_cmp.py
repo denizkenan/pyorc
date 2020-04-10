@@ -131,3 +131,39 @@ def test_read(example, expected):
             length = num + 1
         assert len(orc_res) == length, "ORC file has a different number of row"
     exp_res.close()
+
+
+def test_metadata_read():
+    with open(get_full_path("TestOrcFile.emptyFile.orc"), "rb") as fileo:
+        res = pyorc._pyorc.reader(fileo, struct_repr=StructRepr.DICT)
+        assert res.metadata == {}
+    with open(get_full_path("TestOrcFile.metaData.orc"), "rb") as fileo:
+        res = pyorc._pyorc.reader(fileo, struct_repr=StructRepr.DICT)
+        assert res.metadata["clobber"] == b"\x05\x07\x0b\r\x11\x13"
+        assert (
+            res.metadata["my.meta"] == b"\x01\x02\x03\x04\x05\x06\x07\xff\xfe\x7f\x80"
+        )
+
+
+def test_format_version():
+    with open(get_full_path("demo-11-zlib.orc"), "rb") as fileo:
+        res = pyorc._pyorc.reader(fileo)
+        assert res.format_version == (0, 11)
+    with open(get_full_path("demo-12-zlib.orc"), "rb") as fileo:
+        res = pyorc._pyorc.reader(fileo)
+        assert res.format_version == (0, 12)
+
+
+def test_writer_id():
+    with open(get_full_path("demo-12-zlib.orc"), "rb") as fileo:
+        res = pyorc.reader.Reader(fileo)
+        assert res.writer_id == "ORC_JAVA_WRITER"
+
+
+def test_writer_version():
+    with open(get_full_path("demo-12-zlib.orc"), "rb") as fileo:
+        res = pyorc.reader.Reader(fileo)
+        assert res.writer_version == 1
+    with open(get_full_path("decimal.orc"), "rb") as fileo:
+        res = pyorc.reader.Reader(fileo)
+        assert res.writer_version == 0
